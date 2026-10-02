@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# OpenObserve MCP server over stdio. stdout carries JSON-RPC only — log to stderr.
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../Gemfile', __dir__)
+require 'bundler/setup'
+require_relative '../lib/observability_mcp'
+
+server = ObservabilityMcp::Server.build
+MCP::Server::Transports::StdioTransport.new(server).open
