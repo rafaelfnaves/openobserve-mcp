@@ -16,6 +16,12 @@ module ObservabilityMcp
               instrumentation_library_\w+|instrumentation_scope_\w+|dropped_\w+_count|flags|
               agent_(?:ephemeral_id|id|name|type|version)|ecs_version|_version|input_type|timestamp_ingestion|
               log_offset|log_file_(?:device_id|fingerprint|inode))\z/x
+    # Credential-like keys, matched as whole words of the snake_cased key ("accessToken", "X-Api-Key", "client_secret";
+    # not "total_tokens"). Their values are masked, also inside nested JSON, before anything reaches the model.
+    SENSITIVE_KEY = /(?:\A|_)(?:password|passwd|secret|token|api_?key|authorization|cookie|credentials?|private_key|
+                     session_?id)(?:\z|_)/x
+    AUTH_HEADER_VALUE = %r{\b(Bearer|Basic)\s+[\w\-.~+/]+=*}i
+    REDACTED = '[REDACTED]'
 
     def rows(hits, fields: nil, max_chars: DEFAULT_MAX_CHARS)
       rows = hits.map { compact_row(it, fields: fields) }
@@ -67,7 +73,23 @@ module ObservabilityMcp
     def pairs(row, max_chars) = row.map { |key, raw| "#{key}=#{value(key, raw, max_chars)}" }
 
     def value(key, raw, max_chars)
-      key == '_timestamp' && raw.is_a?(Integer) ? TimeRange.format_us(raw) : scalar(raw, max_chars)
+      key == '_timestamp' && raw.is_a?(Integer) ? TimeRange.format_us(raw) : scalar(redact(key, raw), max_chars)
+    end
+
+    # Masks values stored under credential-like keys (recursively) and Bearer/Basic tokens in free text.
+    def redact(key, raw)
+      return REDACTED if sensitive_key?(key)
+
+      case raw
+      when Hash then raw.to_h { |nested_key, value| [nested_key, redact(nested_key, value)] }
+      when Array then raw.map { redact(nil, it) }
+      when String then raw.gsub(AUTH_HEADER_VALUE, "\\1 #{REDACTED}")
+      else raw
+      end
+    end
+
+    def sensitive_key?(key)
+      !key.nil? && key.to_s.gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase.tr('-. ', '_').match?(SENSITIVE_KEY)
     end
 
     # Any JSON value as one truncated line.

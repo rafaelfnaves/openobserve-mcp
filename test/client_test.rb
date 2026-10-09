@@ -53,4 +53,13 @@ class ClientTest < Minitest::Test
 
     assert_match(/non-JSON/, assert_raises(ObservabilityMcp::ApiError) { client.streams('serverless') }.message)
   end
+
+  def test_rejects_dot_segments_that_would_climb_to_other_api_paths
+    %w[. ..].each do |name|
+      error = assert_raises(ObservabilityMcp::Error) { client.stream_schema('serverless', name, type: 'logs') }
+      assert_equal %(Invalid org or stream name "#{name}".), error.message
+      assert_raises(ObservabilityMcp::Error) { client.search(name, {}, type: 'logs') }
+    end
+    assert_raises(ObservabilityMcp::Error) { client.stream_schema('serverless', '', type: 'logs') }
+  end
 end

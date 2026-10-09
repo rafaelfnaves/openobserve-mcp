@@ -67,7 +67,12 @@ module ObservabilityMcp
       raise ApiError, "Cannot reach OpenObserve (#{@environment.name}, #{@base.host}): #{e.class}."
     end
 
+    # Segments are percent-encoded, which keeps "/", "?" and "#" out of the path, but "." and ".." survive
+    # encoding and would climb to other API paths — so org and stream names like that are rejected.
     def build_uri(segments, params)
+      invalid = segments.find { %w[. ..].include?(it.to_s) || it.to_s.empty? }
+      raise Error, "Invalid org or stream name #{invalid.to_s.inspect}." if invalid
+
       uri = @base.dup
       uri.path = "#{@base.path}/#{segments.map { URI.encode_uri_component(it.to_s) }.join('/')}"
       query = params.compact

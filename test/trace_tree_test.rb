@@ -86,4 +86,16 @@ class TraceTreeTest < Minitest::Test
 
     assert_includes ObservabilityMcp::TraceTree.new(spans).render, '×4 child total=4.0ms'
   end
+
+  def test_redacts_sensitive_attributes_and_tokens_in_error_messages
+    spans = [span('r', '', 'GET /cars', offset_ms: 0, duration_ms: 5, span_status: 'ERROR',
+                                       http_request_header_authorization: 'Basic dXNlcjpwYXNz',
+                                       status_message: 'upstream rejected Bearer abc.def')]
+
+    output = ObservabilityMcp::TraceTree.new(spans, show_attributes: true).render
+
+    assert_includes output, 'http_request_header_authorization=[REDACTED]'
+    assert_includes output, 'status: upstream rejected Bearer [REDACTED]'
+    refute_match(/dXNlcjpwYXNz|abc\.def/, output)
+  end
 end

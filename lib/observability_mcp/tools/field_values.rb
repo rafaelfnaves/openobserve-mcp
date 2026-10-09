@@ -23,7 +23,7 @@ module ObservabilityMcp
         width = Formatter.number(hits.map { it['count'] }.max).length
         lines = ["#{field} · #{target.label} #{stream} (#{type}) · window #{range} · top #{hits.size}"]
         hits.each do |hit|
-          value = hit['value'].nil? ? '(null)' : Formatter.scalar(hit['value'], 200)
+          value = hit['value'].nil? ? '(null)' : Formatter.scalar(Formatter.redact(field, hit['value']), 200)
           lines << "#{Formatter.number(hit['count']).rjust(width)}  #{value}"
         end
         lines.join("\n")

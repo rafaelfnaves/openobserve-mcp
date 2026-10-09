@@ -152,7 +152,7 @@ module ObservabilityMcp
       keys = @show_attributes ? span.keys - STRUCTURAL : KEY_ATTRIBUTES
       span.slice(*keys)
           .reject { |key, value| Formatter::EMPTY_VALUES.include?(value) || key.match?(Formatter::NOISE) }
-          .transform_values { Formatter.scalar(it, 120) }
+          .to_h { |key, value| [key, Formatter.scalar(Formatter.redact(key, value), 120)] }
     end
 
     def error?(span) = span['span_status'] == 'ERROR' || span['status_code'].to_i == 2
@@ -196,7 +196,7 @@ module ObservabilityMcp
       frames.map { Formatter.truncate(it, @max_chars) }
     end
 
-    def one_line(text) = Formatter.truncate(text.to_s.strip.gsub(/\s*\r?\n\s*/, ' ⏎ '), @max_chars)
+    def one_line(text) = Formatter.truncate(Formatter.redact(nil, text.to_s.strip.gsub(/\s*\r?\n\s*/, ' ⏎ ')), @max_chars)
 
     def same_kind?(a, b)
       a['service_name'] == b['service_name'] && a['operation_name'] == b['operation_name']

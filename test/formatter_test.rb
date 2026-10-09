@@ -60,4 +60,18 @@ class FormatterTest < Minitest::Test
     assert_equal '78.7ms', Formatter.duration_ms(78_713)
     assert_equal '1.78s', Formatter.duration_ms(1_777_179)
   end
+
+  def test_redacts_credential_like_keys_nested_json_and_auth_headers
+    row = { 'password' => 'hunter2', 'accessToken' => 'abc', 'X-Api-Key' => 'k', 'gen_ai_usage_total_tokens' => 42,
+            'params' => { 'user' => 'ana', 'client_secret' => 's3', 'items' => [{ 'session_id' => 'x' }] },
+            'message' => 'GET /cars Authorization: Bearer eyJhbGciOi.payload.sig-_ done' }
+
+    output = Formatter.rows([row], max_chars: 500)
+
+    assert_equal <<~TEXT.chomp, output
+      password | accessToken | X-Api-Key | gen_ai_usage_total_tokens | params | message
+      [REDACTED] | [REDACTED] | [REDACTED] | 42 | {"user":"ana","client_secret":"[REDACTED]","items":[{"session_id":"[REDACTED]"}]} | GET /cars Authorization: Bearer [REDACTED] done
+    TEXT
+    refute_match(/hunter2|abc|s3|eyJ/, output)
+  end
 end
