@@ -1,8 +1,7 @@
 # observability-mcp
 
 A read-only MCP server for [OpenObserve](https://openobserve.ai/docs/reference/api/) logs, traces and metrics. It is
-built on the official [Ruby MCP SDK](https://github.com/modelcontextprotocol/ruby-sdk) and replaces raw `oo` CLI calls
-for investigating bugs. The server handles the details that used to go wrong:
+built on the official [Ruby MCP SDK](https://github.com/modelcontextprotocol/ruby-sdk). The server handles the details that used to go wrong:
 
 - **Time windows**: pass `since: "1h"` or ISO8601 `from`/`to`. The server converts them to the microseconds the API
   requires, and epoch values in any precision are recognized by their digit count. Parsing is strict: a timestamp
@@ -33,9 +32,9 @@ Configuration uses the same environment variables as oo-cli:
 Register the server with Claude Code. It inherits your shell environment:
 
 ```bash
-claude mcp add openobserve --scope user -- /home/rafael/personal/observability-mcp/bin/observability-mcp
+claude mcp add openobserve --scope user -- /path/to/observability-mcp
 # If `ruby` on Claude's PATH is not the mise-managed 4.0.6:
-claude mcp add openobserve --scope user -- mise exec -C /home/rafael/personal/observability-mcp -- bin/observability-mcp
+claude mcp add openobserve --scope user -- mise exec -C /path/to/observability-mcp -- bin/observability-mcp
 ```
 
 ## Tools
@@ -55,13 +54,6 @@ claude mcp add openobserve --scope user -- mise exec -C /home/rafael/personal/ob
 Every tool is annotated `readOnlyHint`. Errors come back as MCP tool errors with a hint for what to do next. An
 unexpected exception, which is a bug, is also returned as a tool error, and its backtrace is logged to the server's
 stderr.
-
-## Development
-
-```bash
-bundle exec rake test
-npx @modelcontextprotocol/inspector bin/observability-mcp   # optional, interactive
-```
 
 Layout:
 - `lib/observability_mcp/tools/*`: one `MCP::Tool` per tool.
